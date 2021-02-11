@@ -3,9 +3,13 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 
-	"github.com/ghodss/yaml"
+	"github.com/tuuturu/pager-cli-client/pkg/oauth2"
+	"github.com/tuuturu/pager-cli-client/pkg/pager"
+	"github.com/tuuturu/pager-event-service/pkg/core/models"
+
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/tuuturu/pager-email-client/pkg/core"
@@ -51,6 +55,11 @@ var rootCmd = &cobra.Command{
 		return cfg.Validate()
 	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		token, err := oauth2.AcquireToken(cfg.DiscoveryURL, cfg.ClientID, cfg.ClientSecret)
+		if err != nil {
+			return fmt.Errorf("acquiring events service token: %w", err)
+		}
+
 		messages, err := imap.RetrieveEmails(cfg.IMAPServerURL, cfg.Username, cfg.Password)
 		if err != nil {
 			return fmt.Errorf("retrieving emails: %w", err)
@@ -58,9 +67,13 @@ var rootCmd = &cobra.Command{
 
 		for _, message := range messages {
 			if filter.Test(message) {
-				raw, _ := yaml.Marshal(message)
-
-				_, _ = os.Stdout.Write(raw)
+				err = pager.CreateEvent(cfg.EventsServiceURL, token, models.Event{
+					Title:       "New email",
+					Description: fmt.Sprintf("From %s regarding %s", message.From, message.Subject),
+				})
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		}
 
