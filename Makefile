@@ -197,4 +197,4 @@ run-docker:
 		-e CLIENT_SECRET= \
 		-e EVENTS_SERVICE_URL= \
 		docker.pkg.github.com/tuuturu/pager-email-client/pager-email-client:local \
-		"Package delivery: delivered" "Your package from Amazon has arrived"
+		-f filterconfig.yaml
